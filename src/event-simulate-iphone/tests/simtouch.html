@@ -1,0 +1,286 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>event-simulate-iphone tests</title>
+<link type="text/css" rel="stylesheet" href="../../../build/logger/assets/logger.css" />     
+<link type="text/css" rel="stylesheet" href="../../../build/yuitest/assets/testlogger.css" />     
+
+<script type="text/javascript" src="../../../build/yahoo/yahoo.js"></script>
+<script type="text/javascript" src="../../../build/dom/dom.js"></script>
+<script type="text/javascript" src="../../../build/event/event.js"></script>
+<script type="text/javascript" src="../js/UserActionIphone.js"></script>
+<script type="text/javascript" src="../../../build/logger/logger.js"></script>
+<script type="text/javascript" src="../../../build/json/json.js"></script>
+<script type="text/javascript" src="../../../build/yuitest/yuitest.js"></script>
+<style type="text/css">
+.yui-log, .yui-log-container, yui-log-bd {
+/* no overflow for iphone */
+    overflow: visible;
+    height: auto;
+    width: auto; 
+}
+</style>
+</head>
+<body>
+<h1>event-simulate-iphone tests</h1>
+<p><input type="button" value="Run Tests" id="btnRun" /></p>
+<div id="template">
+    <div id="testdiv">"testDiv"</div>
+    <a href="#foo" id="testLink">link</a>
+</div>
+<script type="text/javascript">
+(function(){
+    //shortcuts
+    var util = YAHOO.util,
+        Assert /*:Object*/ = util.Assert,
+        ArrayAssert /*:Object*/ = util.ArrayAssert,
+    	ObjectAssert /*:Object*/ = util.ObjectAssert,
+    	YUD /*:Object*/ = util.Dom,
+    	UserActionIphone = YAHOO.util.UserActionIphone,
+        tool = YAHOO.tool,
+        template = document.getElementById("template"),
+        templateHTML = template.innerHTML,
+        testNode;
+
+    var touchEventsTestSuite = new tool.TestSuite("Touch Events");
+    var touchEventsDefaults = new tool.TestCase({
+
+        name : "Touch Events Defaults Test Case",
+
+        setUp : function(){
+            testNode = document.getElementById("testdiv");
+        },
+
+        _should : {
+            ignore : {
+            // Why test impossible scenario?
+                testCtrlKey : true,
+                testAltKey : true,
+                testShiftKey : true,
+                testMetaKey : true
+            }
+        },
+        
+        tearDown : function(){
+            testNode = null;
+            // Restore state.
+            template.innerHTML = templateHTML;
+            location.hash = "";
+            document.ontouchstart = document.ontouchend = 
+                document.ontouchmove = ontouchcancel = null; 
+        },
+        
+        testCanBubble : function(){        
+            var eventPhase,
+                BUBBLING_PHASE = 3;
+            document.ontouchstart = callback;   
+            UserActionIphone.touchstart(testNode);
+            function callback(ev) {
+                eventPhase =  ev.eventPhase;
+            }
+            Assert.areSame(BUBBLING_PHASE, eventPhase, "Callback did not bubble properly.");
+        },
+
+        testCancelable : function(){ // Default: cancelable = true.
+            var testLink = document.getElementById("testLink");
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink);
+            function callback(ev) {
+                ev.preventDefault();
+            }
+            this.wait(function(){
+                var wasCanceled = !testLink.hash.match(location.hash);
+                Assert.isFalse(wasCanceled, "Callback was cancelled. Should have been prevented.");
+            }, 10);
+        },
+
+        testCoords : function(){
+            var actual = {};
+            
+            function callback(ev) {
+                touch = ev.touches[0];
+                actual.screenX = touch.screenX;
+                actual.screenY = touch.screenY;
+                actual.pageX = touch.pageX;
+                actual.pageY = touch.pageY;
+            }
+            
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink);
+
+            Assert.areSame(0, actual.screenX, "screenX not correct.");
+            Assert.areSame(0, actual.screenY, "screenY not correct.");
+            Assert.areSame(0, actual.pageX, "pageX not correct.");
+            Assert.areSame(0, actual.pageY, "pageY not correct.");
+        },
+
+        testScale : function() { 
+
+            var scale;
+            function callback(ev) {
+                scale = ev.scale;
+            }
+            
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink);
+            Assert.areSame(1, scale);
+        },
+
+        testRotation : function() { 
+            var actualRotation;
+            function callback(ev) {
+                actualRotation = ev.rotation;
+            }
+            
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink);
+            Assert.areSame(0, actualRotation, "Default rotation wrong.");
+        },
+        
+        /* How can user have any key down while touching? Is this worth even testing? */
+        testCtrlKey : function(){},
+        testAltKey : function(){},
+        testShiftKey : function(){},
+        testMetaKey : function(){}
+    });
+
+    var touchEventsUserDefined = new tool.TestCase({
+
+        setUp : touchEventsDefaults.setUp,
+        tearDown : touchEventsDefaults.tearDown,
+
+        _should : {
+            ignore : { 
+            //    testCustomTouches : true,
+            //    testCustomChangedTouches : true,
+            //    testCustomTargetTouches : true
+            }
+        },
+        
+        testCanBubble : function(){
+
+            // A dispatched event fires at the target.
+            // if an implementation does this, can it be "captured" by ancestors
+            // in the "parent chain"? I did not find the clarification in the spec,
+            // however, it seems to be allowed.
+            // http://www.w3.org/TR/DOM-Level-2-Events/events.html#Events-flow-basic
+            var didNotBubble = true,
+                eventPhase,
+                CAPTURING_PHASE = 1;
+            document.ontouchstart = callback;   
+            UserActionIphone.touchstart(testNode, {bubbles: false});
+            function callback(ev) {
+                eventPhase = ev.eventPhase;
+                didNotBubble = eventPhase === 1;
+            }
+
+            // We just need to make sure that bubbling did not occur. If 
+            // the event was caught on document (in the "parent chain"), then it 
+            // could only legally do so in CAPTURING_PHASE.
+            Assert.isTrue(didNotBubble, 
+                    "Callback did not bubble properly, eventPhase: "+eventPhase);
+        },
+
+        testCancelable : function(){ 
+
+            // Set cancelable to false, "touch" the link, and see if default
+            // action was canceled.
+            var testLink = document.getElementById("testLink");
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink, {cancelable: false});
+            function callback(ev) {
+                ev.preventDefault();
+            }
+            this.wait(function(){
+                var wasCanceled = testLink.hash != location.hash;
+                Assert.isTrue(wasCanceled, "Callback was not cancelled but should have been.");
+            }, 10);
+        },
+
+        testCustomTouches : function(){
+            Assert.fail();
+        },
+        testCustomChangedTouches : function(){
+            Assert.fail();
+        },
+        testCustomTargetTouches : function(){
+            Assert.fail();
+        },
+        
+        testCoords : function(){        
+    
+            var actual = {},
+                coords = {
+                    screenX : 10,
+                    screenY : 20,
+                    pageX : 30,
+                    pageY : 40
+            };
+            
+            function callback(ev) {
+                touch = ev.touches[0];
+                actual.screenX = touch.screenX;
+                actual.screenY = touch.screenY;
+                actual.pageX = touch.pageX;
+                actual.pageY = touch.pageY;
+            }
+            
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink, coords);
+    
+            //test the data coming back
+            Assert.areSame(coords.screenX, actual.screenX, "screenX not correct.");
+            Assert.areSame(coords.screenY, actual.screenY, "screenY not correct.");
+            Assert.areSame(coords.pageX, actual.pageX, "pageX not correct.");
+            Assert.areSame(coords.pageY, actual.pageY, "pageY not correct.");
+        },
+
+        testScale : function() { 
+
+            var data = {scale : 2}, 
+                actualScale;
+            function callback(ev) {
+                actualScale = ev.scale;
+            }
+            
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink, data);
+            Assert.areSame(data.scale, actualScale);
+        },
+
+        testRotation : function() { 
+
+            var data = {rotation : 90}, 
+                actualRotation;
+            function callback(ev) {
+                actualRotation = ev.rotation;
+            }
+            
+            document.ontouchstart = callback;
+            UserActionIphone.touchstart(testLink, data);
+            Assert.areSame(data.rotation, actualRotation);
+        }
+    });
+    
+    var logger = new YAHOO.tool.TestLogger();
+
+    touchEventsTestSuite.add(touchEventsDefaults);
+    touchEventsTestSuite.add(touchEventsUserDefined);
+    //add the tests
+    YAHOO.tool.TestRunner.add(touchEventsTestSuite);
+    
+    //add event handler
+    util.Event.addListener("btnRun", "click", YAHOO.tool.TestRunner.run);
+
+    //XXX Ugly hack.
+    if (typeof parent != "undefined" && parent != window && parent.YAHOO && 
+            parent.YAHOO.tool && parent.YAHOO.tool.TestManager) {
+        YAHOO.tool.TestManager.load();
+    } else {
+        YAHOO.tool.TestRunner.run();
+    }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>event-simulate tests</title>
+<link type="text/css" rel="stylesheet" href="../../../build/logger/assets/logger.css" />     
+<link type="text/css" rel="stylesheet" href="../../../build/yuitest/assets/testlogger.css" />     
+
+<script type="text/javascript" src="../../../build/yahoo/yahoo.js"></script>
+<script type="text/javascript" src="../../../build/dom/dom.js"></script>
+<script type="text/javascript" src="../../../build/event/event.js"></script>
+<script type="text/javascript" src="../../../build/event-simulate/event-simulate.js"></script>
+<script type="text/javascript" src="../../../build/logger/logger.js"></script>
+<script type="text/javascript" src="../../../build/json/json.js"></script>
+<script type="text/javascript" src="../../../build/yuitest/yuitest.js"></script>
+
+</head>
+<body>
+<h1>event-simulate tests</h1>
+<p><input type="button" value="Run Tests" id="btnRun" /></p>
+<script type="text/javascript">
+
+YAHOO.namespace("test");
+
+YAHOO.test.YUITest_test = (function(){
+
+    //shortcuts
+    var Assert /*:Object*/ = YAHOO.util.Assert,
+        ArrayAssert /*:Object*/ = YAHOO.util.ArrayAssert,
+    	ObjectAssert /*:Object*/ = YAHOO.util.ObjectAssert,
+    	UserAction /*:Object*/ = YAHOO.util.UserAction,
+    	YUE /*:Object*/ = YAHOO.util.Event,
+    	YUD /*:Object*/ = YAHOO.util.Dom,
+    	elementTagName = "div";
+
+    //-------------------------------------------------------------------------
+    // Generic Event Test Case
+    //-------------------------------------------------------------------------
+    function GenericEventTestCase(type /*:String*/){
+        GenericEventTestCase.superclass.constructor.call(this);
+        this.eventType = type;
+        this.name = "Event '" + type + "' Tests";
+        this.result = null;
+        element = null;
+    }
+
+    YAHOO.lang.extend(GenericEventTestCase, YAHOO.tool.TestCase, {
+    
+        //---------------------------------------------------------------------
+        // Setup and teardown of test harnesses
+        //---------------------------------------------------------------------
+        
+        /*
+         * Sets up several event handlers used to test UserAction mouse events.
+         */
+        setUp : function(){
+        
+            //create the element
+            element = document.createElement(elementTagName);
+            document.body.appendChild(element);
+            
+            //reset the result
+            this.result = null;
+            
+            //assign event handler
+            YUE.addListener(element, this.eventType, this.handleEvent, this, true);
+        },
+        
+        /* Removes event handlers that were used during the test. */
+        tearDown : function(){
+        
+            //remove the element
+            document.body.removeChild(element);
+
+            //remove event handler
+            YUE.removeListener(element, this.eventType, this.handleEvent, this, true);
+        },
+        
+        /*
+         * Uses to trap and assign the event object for interrogation.
+         * @param {Event} event The event object created from the event.
+         */
+        handleEvent : function(event){
+            this.result = event;
+        }
+    });
+    
+    //-------------------------------------------------------------------------
+    // MouseButtonEvent Test Case
+    //-------------------------------------------------------------------------
+
+    function MouseButtonEventTestCase(type /*:String*/){
+        MouseButtonEventTestCase.superclass.constructor.call(this, type);
+    }
+
+    YAHOO.lang.extend(MouseButtonEventTestCase, GenericEventTestCase, {
+            
+        //---------------------------------------------------------------------
+        // Tests
+        //---------------------------------------------------------------------
+                
+        /*
+         * Tests with default options.
+         */
+        testDefault : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element);
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(0, this.result.button, "Button is incorrect.");
+            
+        },
+        
+        /*
+         * Tests when using the right mouse button.
+         */
+        testRightBtn : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { button: 2 });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(2, this.result.button, "Button is incorrect.");
+        },
+        
+        /*
+         * Tests when using coordinates.
+         */
+        testCoords : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { clientX: 100, clientY: 150, screenX: 200, screenY: 250 });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(0, this.result.button, "Button is incorrect.");
+            Assert.areEqual(100, this.result.clientX, "ClientX is incorrect.");
+            Assert.areEqual(150, this.result.clientY, "ClientX is incorrect.");
+            Assert.areEqual(200, this.result.screenX, "ScreenX is incorrect.");
+            Assert.areEqual(250, this.result.screenY, "ScreenY is incorrect.");
+        },
+        
+        /*
+         * Tests UserAction.click() when using CTRL key.
+         */
+        testCtrlKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { ctrlKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(0, this.result.button, "Button is incorrect.");
+            Assert.isTrue(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");
+        },
+        
+        /*
+         * Tests when using ALT key.
+         */
+        testAltKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { altKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(0, this.result.button, "Button is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isTrue(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");
+        },
+        
+        /*
+         * Tests when using Shift key.
+         */
+        testShiftKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { shiftKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(0, this.result.button, "Button is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isTrue(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");
+        },
+        
+        /*
+         * Tests when using Meta key.
+         */
+        testMetaKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { metaKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(0, this.result.button, "Button is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isTrue(this.result.metaKey, "MetaKey is incorrect.");
+        }    
+    
+    });
+    
+    //-------------------------------------------------------------------------
+    // MouseMovementEvent Test Case
+    //-------------------------------------------------------------------------
+    
+    function MouseMovementEventTestCase(type /*:String*/) {
+        MouseMovementEventTestCase.superclass.constructor.call(this,type);    
+    }
+    
+    YAHOO.lang.extend(MouseMovementEventTestCase, MouseButtonEventTestCase, {
+    
+        /*
+         * Tests that the relatedTarget property is correct.
+         */
+        testRelatedTarget : function(){
+        
+            //fire the click event
+            UserAction[this.eventType](element, { relatedTarget: document.body });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.areSame(window, this.result.view, "View is incorrect.");
+            Assert.areEqual(1, this.result.detail, "Details is incorrect.");
+            //Assert.areEqual(0, this.result.button, "Button is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");        
+            Assert.areSame(document.body, YUE.getRelatedTarget(this.result), "RelatedTarget is incorrect.");        
+        }
+    
+    
+    });
+    
+
+    //-------------------------------------------------------------------------
+    // KeyEvent Test Case
+    //-------------------------------------------------------------------------
+    
+    function KeyEventTestCase(type /*:String*/) {
+        KeyEventTestCase.superclass.constructor.call(this,type);
+    }
+    
+    YAHOO.lang.extend(KeyEventTestCase, GenericEventTestCase, {
+    
+        /*
+         * Tests that the default properties are correct.
+         */
+        testDefault : function(){
+        
+            //fire the click event
+            UserAction[this.eventType](element);
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");        
+      
+        },
+        
+        /*
+         * Tests UserAction.click() when using CTRL key.
+         */
+        testCtrlKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { ctrlKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.isTrue(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");
+        },
+        
+        /*
+         * Tests when using ALT key.
+         */
+        testAltKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { altKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isTrue(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");
+        },
+        
+        /*
+         * Tests when using Shift key.
+         */
+        testShiftKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { shiftKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isTrue(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");
+        },
+        
+        /*
+         * Tests when using Meta key.
+         */
+        testMetaKey : function(){        
+            
+            //fire the click event
+            UserAction[this.eventType](element, { metaKey: true });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isTrue(this.result.metaKey, "MetaKey is incorrect.");
+        }            
+    
+    
+    });    
+    
+    //-------------------------------------------------------------------------
+    // KeyDirection Test Case
+    //-------------------------------------------------------------------------    
+    
+    function KeyDirectionEventTestCase(type /*:String*/){
+        KeyDirectionEventTestCase.superclass.constructor.call(this, type);
+    }
+    
+    YAHOO.lang.extend(KeyDirectionEventTestCase, KeyEventTestCase, {
+    
+        /*
+         * Tests that the default properties are correct.
+         */
+        testKeyCode : function(){
+        
+            //fire the click event
+            UserAction[this.eventType](element, { keyCode: 97 });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");        
+            Assert.areEqual(97, this.result.keyCode, "KeyCode is incorrect.");
+        }
+    
+    });
+    
+    //-------------------------------------------------------------------------
+    // TextEvent Test Case
+    //-------------------------------------------------------------------------
+    
+    function TextEventTestCase(type /*:String*/){
+        TextEventTestCase.superclass.constructor.call(this, type);
+    }
+    
+    YAHOO.lang.extend(TextEventTestCase, KeyEventTestCase, {
+    
+        /*
+         * Tests that the default properties are correct.
+         */
+        testCharCode : function(){
+        
+            //fire the click event
+            UserAction[this.eventType](element, { charCode: 97 });
+
+            //test the data coming back
+            Assert.isObject(this.result, "No event object created.");
+            Assert.areSame(element, YUE.getTarget(this.result), "Target is not correct.");
+            Assert.areEqual(this.eventType, this.result.type, "Event type is incorrect.");
+            Assert.isTrue(this.result.bubbles, "bubbles is incorrect.");
+            Assert.isTrue(this.result.cancelable, "Cancelable is incorrect.");
+            Assert.isFalse(this.result.ctrlKey, "CtrlKey is incorrect.");
+            Assert.isFalse(this.result.altKey, "AltKey is incorrect.");
+            Assert.isFalse(this.result.shiftKey, "ShiftKey is incorrect.");
+            Assert.isFalse(this.result.metaKey, "MetaKey is incorrect.");        
+            Assert.areEqual(97, YUE.getCharCode(this.result), "CharCode is incorrect.");
+        }
+    
+    });
+    
+    //-------------------------------------------------------------------------
+    // Overall master suite
+    //-------------------------------------------------------------------------
+    
+    var suite /*:YAHOO.tool.TestSuite*/ 
+        = new YAHOO.tool.TestSuite("YuiTest Tests");
+        
+ 
+    //-------------------------------------------------------------------------
+    // UserAction Tests
+    //-------------------------------------------------------------------------
+
+    //the user action suite
+    var userActionSuite /*:YAHOO.tool.TestSuite*/ 
+        = new YAHOO.tool.TestSuite("UserAction Tests");
+    suite.add(userActionSuite);
+    
+    var mouseEventsSuite /*:YAHOO.tool.TestSuite*/ 
+        = new YAHOO.tool.TestSuite("MouseEvent Tests");
+    userActionSuite.add(mouseEventsSuite);
+    
+    var keyEventsSuite /*:YAHOO.tool.TestSuite*/ 
+        = new YAHOO.tool.TestSuite("KeyEvent Tests");
+    userActionSuite.add(keyEventsSuite);
+
+    //-------------------------------------------------------------------------
+    // Mouse Tests
+    //-------------------------------------------------------------------------
+    mouseEventsSuite.add(new MouseButtonEventTestCase("click"));
+    mouseEventsSuite.add(new MouseButtonEventTestCase("dblclick"));
+    mouseEventsSuite.add(new MouseButtonEventTestCase("mousedown"));
+    mouseEventsSuite.add(new MouseButtonEventTestCase("mouseup"));        
+    mouseEventsSuite.add(new MouseMovementEventTestCase("mouseover"));
+    mouseEventsSuite.add(new MouseMovementEventTestCase("mouseout"));
+    
+    //-------------------------------------------------------------------------
+    // Key Tests
+    //-------------------------------------------------------------------------
+    keyEventsSuite.add(new KeyDirectionEventTestCase("keyup"));
+    keyEventsSuite.add(new KeyDirectionEventTestCase("keydown"));
+    keyEventsSuite.add(new TextEventTestCase("keypress"));
+
+
+    //return it
+    return suite;
+
+})();
+
+(function(){
+    //create the logger
+    var logger = new YAHOO.tool.TestLogger();
+    
+    //add the tests
+    YAHOO.tool.TestRunner.add(YAHOO.test.YUITest_test);
+    
+    //add event handler
+    YAHOO.util.Event.addListener("btnRun", "click", YAHOO.tool.TestRunner.run);
+
+    if (parent && parent != window) {
+        YAHOO.tool.TestManager.load();
+    } else {
+        YAHOO.tool.TestRunner.run();
+    }
+})();
+</script>
+</body>
+</html>
