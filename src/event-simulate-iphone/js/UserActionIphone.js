@@ -125,10 +125,10 @@ if(typeof document.createTouchList !== "undefined") {
             this.screenY = +this.screenY||0;
             this.pageX = +this.pageX||0;
             this.pageY = +this.pageY||0;
-            this.ctrlKey = "ctrlKey" in this && !!this.ctrlKey;
-            this.altKey = "altKey" in this && !!this.altKey;
-            this.shiftKey = "shiftKey" in this && !!this.shiftKey;
-            this.metaKey = "metaKey" in this && !!this.metaKey;
+            this.ctrlKey = ("ctrlKey" in this) ? !!this.ctrlKey : false;
+            this.altKey = ("altKey" in this) ? !!this.altKey : false;
+            this.shiftKey = ("shiftKey" in this) ? !!this.shiftKey : false;
+            this.metaKey = ("metaKey" in this) ? !!this.metaKey : false;
             this.scale = +this.scale||1;
             this.rotation = +this.rotation||0;
             this.touches = createTouchList(this.touches||this);
